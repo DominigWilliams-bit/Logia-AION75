@@ -1,7 +1,7 @@
-import { useEffect, useState, useCallback, forwardRef } from 'react';
+import { useEffect, useState, useCallback, useMemo, forwardRef } from 'react';
 import { supabase } from '@/integrations/supabase/client-unsafe';
 import { Button } from '@/components/ui/button';
-import { Plus, Pencil, Trash2, Download, MessageCircle } from 'lucide-react';
+import { Plus, Pencil, Trash2, Download, MessageCircle, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import { ReceiptUpload } from '@/components/ui/receipt-upload';
 import { formatDateForDisplay, getSystemDateString } from '@/lib/dateUtils';
 import {
@@ -23,6 +23,7 @@ import { openWhatsApp } from '@/lib/whatsappUtils';
 
 interface DegreeFee {
   id: string;
+  member_id: string | null;
   description: string;
   amount: number;
   fee_date: string;
@@ -31,23 +32,34 @@ interface DegreeFee {
   notes: string | null;
 }
 
+interface ActiveMember {
+  id: string;
+  full_name: string;
+}
+
 const CATEGORIES = [
 { value: 'iniciacion', label: 'Iniciación' },
 { value: 'aumento_salario', label: 'Aumento de Salario (Compañero)' },
 { value: 'exaltacion', label: 'Exaltación (Maestro)' },
 { value: 'afiliacion_plancha', label: 'Afiliación / Plancha de Quite' }];
 
-
 const getCategoryLabel = (value: string) => CATEGORIES.find((c) => c.value === value)?.label || value;
+
+const PAGE_SIZE = 25;
 
 const DegreeFees = forwardRef<HTMLDivElement>(function DegreeFees(_props, ref) {
   const [fees, setFees] = useState<DegreeFee[]>([]);
+  const [activeMembers, setActiveMembers] = useState<ActiveMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
   const [editingFee, setEditingFee] = useState<DegreeFee | null>(null);
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterMemberId, setFilterMemberId] = useState<string>('all');
+  const [currentPage, setCurrentPage] = useState(1);
   const [formData, setFormData] = useState({
+    member_id: '',
     description: '',
     notes: '',
     category: 'iniciacion',
@@ -55,48 +67,72 @@ const DegreeFees = forwardRef<HTMLDivElement>(function DegreeFees(_props, ref) {
     fee_date: getSystemDateString()
   });
   const [lastReceiptData, setLastReceiptData] = useState<{
-    description: string;amount: number;category: string;feeDate: string;
+    description: string; amount: number; category: string; feeDate: string;
   } | null>(null);
-  // Track if comprobante was uploaded to gate the receipt button
   const [hasComprobante, setHasComprobante] = useState(false);
   const { toast } = useToast();
   const { settings } = useSettings();
 
+  // Memoized member map for fast lookups
+  const memberMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    activeMembers.forEach(m => { map[m.id] = m.full_name; });
+    return map;
+  }, [activeMembers]);
+
+  // Filtered and paginated data
+  const filteredFees = useMemo(() => {
+    let result = fees;
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase();
+      result = result.filter(f =>
+        f.description.toLowerCase().includes(term) ||
+        (f.member_id && memberMap[f.member_id]?.toLowerCase().includes(term))
+      );
+    }
+    if (filterMemberId && filterMemberId !== 'all') {
+      result = result.filter(f => f.member_id === filterMemberId);
+    }
+    return result;
+  }, [fees, searchTerm, filterMemberId, memberMap]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredFees.length / PAGE_SIZE));
+  const paginatedFees = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return filteredFees.slice(start, start + PAGE_SIZE);
+  }, [filteredFees, currentPage]);
+
+  // Reset page when filters change
+  useEffect(() => { setCurrentPage(1); }, [searchTerm, filterMemberId]);
+
   useEffect(() => {
-    loadFees();
+    loadData();
   }, []);
 
-  const loadFees = async () => {
+  const loadData = async () => {
     setLoading(true);
-    const { data } = await supabase.
-    from('degree_fees').
-    select('*').
-    order('fee_date', { ascending: false });
-    if (data) setFees(data as DegreeFee[]);
+    const [feesResult, membersResult] = await Promise.all([
+      supabase.from('degree_fees').select('*').order('fee_date', { ascending: false }),
+      supabase.from('members').select('id, full_name').eq('status', 'activo').order('full_name')
+    ]);
+    if (feesResult.data) setFees(feesResult.data as DegreeFee[]);
+    if (membersResult.data) setActiveMembers(membersResult.data as ActiveMember[]);
     setLoading(false);
   };
 
   const resetForm = () => {
-    setFormData({
-      description: '',
-      notes: '',
-      category: 'iniciacion',
-      amount: '',
-      fee_date: getSystemDateString()
-    });
+    setFormData({ member_id: '', description: '', notes: '', category: 'iniciacion', amount: '', fee_date: getSystemDateString() });
     setEditingFee(null);
     setReceiptFile(null);
     setHasComprobante(false);
   };
 
-  const openNewDialog = () => {
-    resetForm();
-    setShowDialog(true);
-  };
+  const openNewDialog = () => { resetForm(); setShowDialog(true); };
 
   const openEditDialog = (fee: DegreeFee) => {
     setEditingFee(fee);
     setFormData({
+      member_id: fee.member_id || '',
       description: fee.description,
       notes: fee.notes || '',
       category: fee.category,
@@ -134,13 +170,14 @@ const DegreeFees = forwardRef<HTMLDivElement>(function DegreeFees(_props, ref) {
       let receiptUrl = editingFee?.receipt_url || null;
       if (receiptFile) receiptUrl = await uploadReceipt();
 
-      const feeData = {
+      const feeData: any = {
         description: formData.description,
         notes: formData.notes || null,
         category: formData.category,
         amount: parseFloat(formData.amount),
         fee_date: formData.fee_date,
-        receipt_url: receiptUrl
+        receipt_url: receiptUrl,
+        member_id: formData.member_id || null
       };
 
       if (editingFee) {
@@ -153,7 +190,6 @@ const DegreeFees = forwardRef<HTMLDivElement>(function DegreeFees(_props, ref) {
         toast({ title: 'Derecho de grado registrado correctamente' });
       }
 
-      // Store receipt data for potential receipt generation
       if (receiptFile || editingFee?.receipt_url) {
         setLastReceiptData({
           description: formData.description,
@@ -165,7 +201,7 @@ const DegreeFees = forwardRef<HTMLDivElement>(function DegreeFees(_props, ref) {
 
       setShowDialog(false);
       resetForm();
-      loadFees();
+      loadData();
     } catch (error: any) {
       toast({ title: 'Error', description: error.message || 'No se pudo guardar', variant: 'destructive' });
     } finally {
@@ -179,22 +215,19 @@ const DegreeFees = forwardRef<HTMLDivElement>(function DegreeFees(_props, ref) {
       toast({ title: 'Error', description: 'No se pudo eliminar', variant: 'destructive' });
     } else {
       toast({ title: 'Registro eliminado correctamente' });
-      loadFees();
+      loadData();
     }
   };
 
   const getTreasurerAndVM = useCallback(async () => {
     let treasurerName = 'Tesorero';
     let vmName = 'Venerable Maestro';
-
     if (settings.treasurer_id) {
       const { data } = await supabase.from('members').select('full_name').eq('id', settings.treasurer_id).maybeSingle();
       if (data) treasurerName = data.full_name;
     }
-
     const { data: vmData } = await supabase.from('members').select('full_name').eq('cargo_logial', 'venerable_maestro').limit(1).maybeSingle();
     if (vmData) vmName = vmData.full_name;
-
     return {
       treasurer: { name: treasurerName, cargo: 'Tesorero', signatureUrl: settings.treasurer_signature_url },
       venerableMaestro: { name: vmName, cargo: 'Venerable Maestro', signatureUrl: settings.vm_signature_url }
@@ -231,85 +264,109 @@ const DegreeFees = forwardRef<HTMLDivElement>(function DegreeFees(_props, ref) {
     window.open(`https://wa.me/?text=${encoded}`, '_blank');
   };
 
-  // Determine if receipt button should show in form dialog
   const canGenerateReceipt = hasComprobante || !!editingFee?.receipt_url;
 
   return (
     <div ref={ref} className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-3xl font-bold">Derechos de Grado</h1>
           <p className="text-muted-foreground mt-1">
             Registro de pagos por iniciación, aumento de salario, exaltación y afiliación
           </p>
         </div>
-        <Button onClick={openNewDialog}>
-          <Plus className="mr-2 h-4 w-4" />
-          Nuevo Registro
-        </Button>
+        <div className="flex items-center gap-3">
+          <div className="relative w-56">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input placeholder="Buscar..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9" />
+          </div>
+          <Select value={filterMemberId} onValueChange={setFilterMemberId}>
+            <SelectTrigger className="w-48"><SelectValue placeholder="Filtrar por miembro" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos los miembros</SelectItem>
+              {activeMembers.map(m => <SelectItem key={m.id} value={m.id}>{m.full_name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Button onClick={openNewDialog}>
+            <Plus className="mr-2 h-4 w-4" />
+            Nuevo Registro
+          </Button>
+        </div>
       </div>
 
       <div className="rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[200px]">Descripción</TableHead>
-              <TableHead className="w-[180px]">Categoría</TableHead>
+              <TableHead className="w-[160px]">Miembro</TableHead>
+              <TableHead className="w-[180px]">Descripción</TableHead>
+              <TableHead className="w-[160px]">Categoría</TableHead>
               <TableHead className="w-[100px]">Monto</TableHead>
               <TableHead className="w-[100px]">Fecha</TableHead>
-              <TableHead className="w-[100px]">Comprobante</TableHead>
+              <TableHead className="w-[80px]">Comprobante</TableHead>
               <TableHead className="w-[100px] text-right">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {loading ?
-            <TableRow>
-                <TableCell colSpan={6} className="text-center py-8">Cargando...</TableCell>
-              </TableRow> :
-            fees.length === 0 ?
-            <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                  No hay derechos de grado registrados
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center py-8">Cargando...</TableCell>
+              </TableRow>
+            ) : paginatedFees.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                  {searchTerm || filterMemberId !== 'all' ? 'No se encontraron resultados' : 'No hay derechos de grado registrados'}
                 </TableCell>
-              </TableRow> :
-
-            fees.map((fee) =>
-            <TableRow key={fee.id}>
+              </TableRow>
+            ) : (
+              paginatedFees.map((fee) => (
+                <TableRow key={fee.id}>
+                  <TableCell className="text-sm">{fee.member_id ? memberMap[fee.member_id] || '-' : '-'}</TableCell>
                   <TableCell className="font-medium">{fee.description}</TableCell>
-                  <TableCell className="text-sm">
-                    {getCategoryLabel(fee.category)}
-                  </TableCell>
+                  <TableCell className="text-sm">{getCategoryLabel(fee.category)}</TableCell>
                   <TableCell>${fee.amount.toFixed(2)}</TableCell>
                   <TableCell>{formatDateForDisplay(fee.fee_date)}</TableCell>
                   <TableCell>
-                    {fee.receipt_url ?
-                <a href={fee.receipt_url} target="_blank" rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-primary hover:underline text-sm">
-                         Ver
-                      </a> :
-
-                <span className="text-muted-foreground text-sm">-</span>
-                }
+                    {fee.receipt_url ? (
+                      <a href={fee.receipt_url} target="_blank" rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-primary hover:underline text-sm">Ver</a>
+                    ) : (
+                      <span className="text-muted-foreground text-sm">-</span>
+                    )}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex gap-1 justify-end">
-                      <Button variant="ghost" size="sm" onClick={() => openEditDialog(fee)}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => handleDelete(fee.id)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => openEditDialog(fee)}><Pencil className="h-4 w-4" /></Button>
+                      <Button variant="ghost" size="sm" onClick={() => handleDelete(fee.id)}><Trash2 className="h-4 w-4" /></Button>
                     </div>
                   </TableCell>
                 </TableRow>
-            )
-            }
+              ))
+            )}
           </TableBody>
         </Table>
       </div>
 
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            Mostrando {((currentPage - 1) * PAGE_SIZE) + 1}–{Math.min(currentPage * PAGE_SIZE, filteredFees.length)} de {filteredFees.length}
+          </p>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" disabled={currentPage <= 1} onClick={() => setCurrentPage(p => p - 1)}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="text-sm">Página {currentPage} de {totalPages}</span>
+            <Button variant="outline" size="sm" disabled={currentPage >= totalPages} onClick={() => setCurrentPage(p => p + 1)}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* New/Edit Dialog */}
-      <Dialog open={showDialog} onOpenChange={(open) => {setShowDialog(open);if (!open) resetForm();}}>
+      <Dialog open={showDialog} onOpenChange={(open) => { setShowDialog(open); if (!open) resetForm(); }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>{editingFee ? 'Editar Derecho de Grado' : 'Nuevo Derecho de Grado'}</DialogTitle>
@@ -317,13 +374,24 @@ const DegreeFees = forwardRef<HTMLDivElement>(function DegreeFees(_props, ref) {
               {editingFee ? 'Modifique los datos del registro' : 'Registre un nuevo derecho de grado'}
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4">
+            <div>
+              <Label htmlFor="member">Miembro</Label>
+              <Select value={formData.member_id || 'none'} onValueChange={(value) => setFormData({ ...formData, member_id: value === 'none' ? '' : value })}>
+                <SelectTrigger><SelectValue placeholder="Seleccione un miembro (opcional)" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">— Sin seleccionar —</SelectItem>
+                  {activeMembers.map(m => <SelectItem key={m.id} value={m.id}>{m.full_name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+
             <div>
               <Label htmlFor="description">Descripción *</Label>
               <Input id="description" value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              placeholder="Ej: Iniciación de H. Juan Pérez" />
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                placeholder="Ej: Iniciación de H. Juan Pérez" />
             </div>
 
             <div>
@@ -331,9 +399,7 @@ const DegreeFees = forwardRef<HTMLDivElement>(function DegreeFees(_props, ref) {
               <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value })}>
                 <SelectTrigger><SelectValue placeholder="Seleccione categoría" /></SelectTrigger>
                 <SelectContent>
-                  {CATEGORIES.map((cat) =>
-                  <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>
-                  )}
+                  {CATEGORIES.map((cat) => <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -341,20 +407,20 @@ const DegreeFees = forwardRef<HTMLDivElement>(function DegreeFees(_props, ref) {
             <div>
               <Label htmlFor="amount">Monto *</Label>
               <Input id="amount" type="number" step="0.01" value={formData.amount}
-              onChange={(e) => setFormData({ ...formData, amount: e.target.value })} placeholder="0.00" />
+                onChange={(e) => setFormData({ ...formData, amount: e.target.value })} placeholder="0.00" />
             </div>
 
             <div>
               <Label htmlFor="fee_date">Fecha *</Label>
               <Input id="fee_date" type="date" value={formData.fee_date}
-              onChange={(e) => setFormData({ ...formData, fee_date: e.target.value })} />
+                onChange={(e) => setFormData({ ...formData, fee_date: e.target.value })} />
             </div>
 
             <div>
               <Label htmlFor="notes">Notas</Label>
               <Textarea id="notes" value={formData.notes}
-              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              placeholder="Detalles adicionales" />
+                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                placeholder="Detalles adicionales" />
             </div>
 
             <ReceiptUpload
@@ -362,27 +428,26 @@ const DegreeFees = forwardRef<HTMLDivElement>(function DegreeFees(_props, ref) {
               onFileSelect={handleFileSelect}
               label="Comprobante de Pago"
               accept=".jpg,.jpeg,.png,.pdf" />
-
           </div>
 
           <DialogFooter className="flex-wrap gap-2">
-            <Button variant="outline" onClick={() => {setShowDialog(false);resetForm();}}>Cancelar</Button>
+            <Button variant="outline" onClick={() => { setShowDialog(false); resetForm(); }}>Cancelar</Button>
             <Button onClick={handleSubmit} disabled={uploading}>
               {uploading ? 'Guardando...' : editingFee ? 'Actualizar' : 'Registrar'}
             </Button>
-            {canGenerateReceipt &&
-            <Button variant="secondary" onClick={() => {
-              setLastReceiptData({
-                description: formData.description,
-                amount: parseFloat(formData.amount) || 0,
-                category: formData.category,
-                feeDate: formData.fee_date
-              });
-              setShowDialog(false);
-            }}>
-                 Generar Recibo
+            {canGenerateReceipt && (
+              <Button variant="secondary" onClick={() => {
+                setLastReceiptData({
+                  description: formData.description,
+                  amount: parseFloat(formData.amount) || 0,
+                  category: formData.category,
+                  feeDate: formData.fee_date
+                });
+                setShowDialog(false);
+              }}>
+                Generar Recibo
               </Button>
-            }
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -392,9 +457,7 @@ const DegreeFees = forwardRef<HTMLDivElement>(function DegreeFees(_props, ref) {
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle>Recibo de Pago – Derechos de Grado</DialogTitle>
-            <DialogDescription>
-              Derecho de grado registrado
-            </DialogDescription>
+            <DialogDescription>Derecho de grado registrado</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div className="p-3 bg-muted/50 rounded-md text-sm space-y-1">
@@ -417,8 +480,8 @@ const DegreeFees = forwardRef<HTMLDivElement>(function DegreeFees(_props, ref) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>);
-
+    </div>
+  );
 });
 
 export default DegreeFees;

@@ -14,7 +14,307 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      degree_fees: {
+        Row: {
+          amount: number
+          category: string | null
+          created_at: string
+          description: string
+          fee_date: string
+          id: string
+          member_id: string | null
+          notes: string | null
+          receipt_url: string | null
+        }
+        Insert: {
+          amount?: number
+          category?: string | null
+          created_at?: string
+          description: string
+          fee_date?: string
+          id?: string
+          member_id?: string | null
+          notes?: string | null
+          receipt_url?: string | null
+        }
+        Update: {
+          amount?: number
+          category?: string | null
+          created_at?: string
+          description?: string
+          fee_date?: string
+          id?: string
+          member_id?: string | null
+          notes?: string | null
+          receipt_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "degree_fees_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      expenses: {
+        Row: {
+          amount: number
+          category: string | null
+          created_at: string
+          description: string
+          expense_date: string
+          id: string
+          notes: string | null
+          receipt_url: string | null
+        }
+        Insert: {
+          amount?: number
+          category?: string | null
+          created_at?: string
+          description: string
+          expense_date?: string
+          id?: string
+          notes?: string | null
+          receipt_url?: string | null
+        }
+        Update: {
+          amount?: number
+          category?: string | null
+          created_at?: string
+          description?: string
+          expense_date?: string
+          id?: string
+          notes?: string | null
+          receipt_url?: string | null
+        }
+        Relationships: []
+      }
+      extraordinary_fees: {
+        Row: {
+          amount_per_member: number
+          category: string | null
+          created_at: string
+          description: string | null
+          due_date: string | null
+          id: string
+          is_mandatory: boolean | null
+          name: string
+        }
+        Insert: {
+          amount_per_member?: number
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          is_mandatory?: boolean | null
+          name: string
+        }
+        Update: {
+          amount_per_member?: number
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          is_mandatory?: boolean | null
+          name?: string
+        }
+        Relationships: []
+      }
+      extraordinary_payments: {
+        Row: {
+          amount_paid: number
+          created_at: string
+          extraordinary_fee_id: string
+          id: string
+          member_id: string
+          payment_date: string | null
+          receipt_url: string | null
+        }
+        Insert: {
+          amount_paid?: number
+          created_at?: string
+          extraordinary_fee_id: string
+          id?: string
+          member_id: string
+          payment_date?: string | null
+          receipt_url?: string | null
+        }
+        Update: {
+          amount_paid?: number
+          created_at?: string
+          extraordinary_fee_id?: string
+          id?: string
+          member_id?: string
+          payment_date?: string | null
+          receipt_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "extraordinary_payments_extraordinary_fee_id_fkey"
+            columns: ["extraordinary_fee_id"]
+            isOneToOne: false
+            referencedRelation: "extraordinary_fees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "extraordinary_payments_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      members: {
+        Row: {
+          address: string | null
+          birth_date: string | null
+          cargo_logial: string | null
+          cedula: string | null
+          created_at: string
+          degree: string | null
+          email: string | null
+          emergency_contact_name: string | null
+          emergency_contact_phone: string | null
+          full_name: string
+          id: string
+          is_treasurer: boolean | null
+          join_date: string | null
+          phone: string | null
+          status: string | null
+          treasury_amount: number | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          birth_date?: string | null
+          cargo_logial?: string | null
+          cedula?: string | null
+          created_at?: string
+          degree?: string | null
+          email?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          full_name: string
+          id?: string
+          is_treasurer?: boolean | null
+          join_date?: string | null
+          phone?: string | null
+          status?: string | null
+          treasury_amount?: number | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          birth_date?: string | null
+          cargo_logial?: string | null
+          cedula?: string | null
+          created_at?: string
+          degree?: string | null
+          email?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          full_name?: string
+          id?: string
+          is_treasurer?: boolean | null
+          join_date?: string | null
+          phone?: string | null
+          status?: string | null
+          treasury_amount?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      monthly_payments: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          member_id: string
+          month: number
+          paid_at: string | null
+          payment_type: string | null
+          quick_pay_group_id: string | null
+          receipt_url: string | null
+          status: string | null
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          id?: string
+          member_id: string
+          month: number
+          paid_at?: string | null
+          payment_type?: string | null
+          quick_pay_group_id?: string | null
+          receipt_url?: string | null
+          status?: string | null
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          member_id?: string
+          month?: number
+          paid_at?: string | null
+          payment_type?: string | null
+          quick_pay_group_id?: string | null
+          receipt_url?: string | null
+          status?: string | null
+          updated_at?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "monthly_payments_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      settings: {
+        Row: {
+          annual_report_template: string | null
+          created_at: string
+          id: string
+          institution_name: string | null
+          logo_url: string | null
+          monthly_fee_base: number | null
+          monthly_report_template: string | null
+          updated_at: string
+        }
+        Insert: {
+          annual_report_template?: string | null
+          created_at?: string
+          id?: string
+          institution_name?: string | null
+          logo_url?: string | null
+          monthly_fee_base?: number | null
+          monthly_report_template?: string | null
+          updated_at?: string
+        }
+        Update: {
+          annual_report_template?: string | null
+          created_at?: string
+          id?: string
+          institution_name?: string | null
+          logo_url?: string | null
+          monthly_fee_base?: number | null
+          monthly_report_template?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
