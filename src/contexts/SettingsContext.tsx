@@ -71,7 +71,11 @@ async function fetchSettings(): Promise<AppSettings> {
     const { data, error } = await supabase
       .from('settings')
       .select('*')
-      .limit(1)
+      // IMPORTANT: This app uses a single canonical settings row.
+      // Using limit(1) without a deterministic filter/order can return a
+      // different row over time if multiple records exist, which makes values
+      // (e.g., treasurer_id) appear to "reset" in the UI.
+      .eq('id', 'default')
       .maybeSingle();
 
     if (error) {
@@ -83,6 +87,7 @@ async function fetchSettings(): Promise<AppSettings> {
       const { data: inserted, error: insertError } = await supabase
         .from('settings')
         .insert([{
+          id: 'default',
           institution_name: DEFAULT_SETTINGS.institution_name,
           monthly_fee_base: DEFAULT_SETTINGS.monthly_fee_base,
           monthly_report_template: DEFAULT_SETTINGS.monthly_report_template,
@@ -148,17 +153,12 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const updateSettings = useCallback(async (updates: Partial<AppSettings>) => {
-    // Always use the latest global settings to avoid stale state overwrites
-    const latestSettings = globalSettings || settings;
-    let currentId = latestSettings.id;
-    if (!currentId || currentId === 'default') {
-      const freshSettings = await refreshGlobalSettings();
-      if (!freshSettings.id || freshSettings.id === 'default') {
-        throw new Error('No se encontró configuración válida en la base de datos');
-      }
-      currentId = freshSettings.id;
-    }
+    // Use a stable, canonical settings record.
+    // This prevents accidental switching between different rows in the table.
+    const currentId = 'default';
 
+    // Always merge with the latest known settings to avoid overwriting fields.
+    const latestSettings = globalSettings || settings;
     const newSettings = { ...latestSettings, ...updates, id: currentId };
     setSettings(newSettings);
     globalSettings = newSettings;

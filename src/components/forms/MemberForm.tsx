@@ -52,6 +52,9 @@ const CARGO_OPTIONS = [{
   value: 'venerable_maestro',
   label: 'Venerable Maestro'
 }, {
+  value: 'past_venerable_maestro',
+  label: 'Past Venerable Maestro'
+}, {
   value: 'primer_vigilante',
   label: 'Primer Vigilante'
 }, {
@@ -124,6 +127,27 @@ export default function MemberForm({
   const performSubmit = async () => {
     setLoading(true);
     try {
+      // En la Logia solo puede existir 1 Venerable Maestro activo.
+      // (Past Venerable Maestro puede repetirse.)
+      if (formData.cargo_logial === 'venerable_maestro') {
+        const { data: existingVm, error: vmError } = await supabase
+          .from('members')
+          .select('id')
+          .eq('cargo_logial', 'venerable_maestro')
+          .limit(1)
+          .maybeSingle();
+        if (vmError) throw vmError;
+        if (existingVm && existingVm.id !== member?.id) {
+          toast({
+            title: 'No se puede asignar Venerable Maestro',
+            description: 'Ya existe un miembro con el cargo logial de Venerable Maestro. Primero cambie ese cargo para asignar uno nuevo.',
+            variant: 'destructive'
+          });
+          setLoading(false);
+          return;
+        }
+      }
+
       const dataToSave: any = {
         full_name: formData.full_name.trim(),
         phone: formData.phone || null,

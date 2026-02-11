@@ -55,6 +55,7 @@ const GRADE_LABELS: Record<string, string> = {
 
 const CARGO_LABELS: Record<string, string> = {
   venerable_maestro: 'Venerable Maestro',
+  past_venerable_maestro: 'Past Venerable Maestro',
   primer_vigilante: 'Primer Vigilante',
   segundo_vigilante: 'Segundo Vigilante',
   tesorero: 'Tesorero',

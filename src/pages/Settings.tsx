@@ -71,13 +71,10 @@ const Settings = forwardRef<HTMLDivElement>(function Settings(_props, ref) {
   const handleSaveTreasurer = async () => {
     setSaving(true);
     try {
-      // Remove old treasurer flag
-      await supabase.from('members').update({ is_treasurer: false }).eq('is_treasurer', true);
-      // Set new treasurer
-      if (selectedTreasurerId) {
-        await supabase.from('members').update({ is_treasurer: true }).eq('id', selectedTreasurerId);
-      }
-      // Save treasurer_id to settings context (persists in DB)
+      // IMPORTANT UX/Business rule:
+      // "Tesorero activo" se controla por PERÍODO desde Configuración.
+      // No depende del campo is_treasurer en members (ese campo es solo etiqueta/histórico).
+      // Por lo tanto, NO tocamos members aquí. Solo persistimos settings.treasurer_id.
       await updateSettings({ treasurer_id: selectedTreasurerId || null });
       await refreshCache();
       toast({ title: 'Tesorero actualizado' });

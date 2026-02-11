@@ -268,20 +268,20 @@ const DegreeFees = forwardRef<HTMLDivElement>(function DegreeFees(_props, ref) {
 
   return (
     <div ref={ref} className="space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <div>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
           <h1 className="text-3xl font-bold">Derechos de Grado</h1>
           <p className="text-muted-foreground mt-1">
             Registro de pagos por iniciación, aumento de salario, exaltación y afiliación
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="relative w-56">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+          <div className="relative w-full sm:w-56">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input placeholder="Buscar..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9" />
           </div>
           <Select value={filterMemberId} onValueChange={setFilterMemberId}>
-            <SelectTrigger className="w-48"><SelectValue placeholder="Filtrar por miembro" /></SelectTrigger>
+            <SelectTrigger className="w-full sm:w-48"><SelectValue placeholder="Filtrar por miembro" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos los miembros</SelectItem>
               {activeMembers.map(m => <SelectItem key={m.id} value={m.id}>{m.full_name}</SelectItem>)}
@@ -379,7 +379,7 @@ const DegreeFees = forwardRef<HTMLDivElement>(function DegreeFees(_props, ref) {
             <div>
               <Label htmlFor="member">Miembro</Label>
               <Select value={formData.member_id || 'none'} onValueChange={(value) => setFormData({ ...formData, member_id: value === 'none' ? '' : value })}>
-                <SelectTrigger><SelectValue placeholder="Seleccione un miembro (opcional)" /></SelectTrigger>
+                <SelectTrigger className="w-full"><SelectValue placeholder="Seleccione un miembro (opcional)" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">— Sin seleccionar —</SelectItem>
                   {activeMembers.map(m => <SelectItem key={m.id} value={m.id}>{m.full_name}</SelectItem>)}
@@ -397,7 +397,7 @@ const DegreeFees = forwardRef<HTMLDivElement>(function DegreeFees(_props, ref) {
             <div>
               <Label htmlFor="category">Categoría *</Label>
               <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value })}>
-                <SelectTrigger><SelectValue placeholder="Seleccione categoría" /></SelectTrigger>
+                <SelectTrigger className="w-full"><SelectValue placeholder="Seleccione categoría" /></SelectTrigger>
                 <SelectContent>
                   {CATEGORIES.map((cat) => <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>)}
                 </SelectContent>
