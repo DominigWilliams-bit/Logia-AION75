@@ -250,22 +250,21 @@ export async function generateMonthlyPDF(
   let yPos = 35;
 
   // Header
-  doc.setFontSize(16);
-  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
   doc.text(institutionName, pageWidth / 2, yPos, { align: 'center' });
   
-  yPos += 8;
-  doc.setFontSize(12);
+  yPos += 10;
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
   doc.text('INFORME MENSUAL DE TESORERÍA', pageWidth / 2, yPos, { align: 'center' });
   
   yPos += 7;
-  doc.setFontSize(11);
+  doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
   doc.text(`${monthName} ${year}`, pageWidth / 2, yPos, { align: 'center' });
   
   yPos += 6;
-  doc.setLineWidth(0.5);
-  doc.line(20, yPos, pageWidth - 20, yPos);
   
   // Custom template text
   yPos += 8;
@@ -448,22 +447,21 @@ export async function generateAnnualPDF(
   let yPos = 35;
 
   // Header
-  doc.setFontSize(16);
-  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
   doc.text(institutionName, pageWidth / 2, yPos, { align: 'center' });
   
-  yPos += 8;
-  doc.setFontSize(12);
+  yPos += 10;
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
   doc.text('INFORME ANUAL DE TESORERÍA', pageWidth / 2, yPos, { align: 'center' });
   
   yPos += 7;
-  doc.setFontSize(11);
+  doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
   doc.text(`Año ${year}`, pageWidth / 2, yPos, { align: 'center' });
   
   yPos += 6;
-  doc.setLineWidth(0.5);
-  doc.line(20, yPos, pageWidth - 20, yPos);
   
   // Custom template text
   yPos += 8;
@@ -648,19 +646,16 @@ export async function generateCollectionLetterPDF(data: CollectionLetterData): P
   
   let yPos = 35;
 
-  // ─── TITLE ──────────────────────────────────────────────
-  doc.setFontSize(14);
-  doc.setFont('helvetica', 'bold');
-  doc.text('COMUNICADO POR MORA', pageWidth / 2, yPos, { align: 'center' });
-  
-  yPos += 6;
+  // Institution name
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
   doc.text(data.institutionName, pageWidth / 2, yPos, { align: 'center' });
 
-  yPos += 5;
-  doc.setLineWidth(0.4);
-  doc.line(marginLeft, yPos, pageWidth - marginRight, yPos);
+  // Title
+  yPos += 10;
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('COMUNICADO POR MORA', pageWidth / 2, yPos, { align: 'center' });
 
   yPos += 6;
   
@@ -731,16 +726,13 @@ export async function generateCollectionLetterPDF(data: CollectionLetterData): P
     yPos = (doc as any).lastAutoTable.finalY + 3;
   }
 
-  // Total box
-  doc.setFillColor(245, 245, 245);
-  doc.setDrawColor(180, 180, 180);
-  doc.setLineWidth(0.3);
-  doc.roundedRect(marginLeft, yPos, contentWidth, 10, 2, 2, 'FD');
-  doc.setFontSize(11);
+  // Total line (no box)
+  yPos += 4;
+  doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
-  doc.text('TOTAL ADEUDADO:', marginLeft + 5, yPos + 7);
-  doc.text(`$${data.totalOwed.toFixed(2)}`, pageWidth - marginRight - 5, yPos + 7, { align: 'right' });
-  yPos += 14;
+  doc.text('TOTAL ADEUDADO:', marginLeft, yPos);
+  doc.text(`$${data.totalOwed.toFixed(2)}`, pageWidth - marginRight, yPos, { align: 'right' });
+  yPos += 8;
   
   // Closing paragraph - single compact text
   doc.setFont('helvetica', 'normal');
