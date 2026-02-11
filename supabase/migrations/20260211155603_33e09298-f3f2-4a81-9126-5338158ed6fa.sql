@@ -1,0 +1,1 @@
+ALTER TABLE public.monthly_payments ADD COLUMN notes text;
