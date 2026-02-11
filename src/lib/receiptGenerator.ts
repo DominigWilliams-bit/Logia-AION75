@@ -93,193 +93,132 @@ function formatDate(dateStr: string): string {
 
 /**
  * Generate a clean, formal payment receipt (portrait A4).
- * Visual structure inspired by classic invoice layout:
- *   - Header: Logo (left) + Title & receipt info (right)
- *   - Info block: Recibido de, Concepto
- *   - Amount block: Monto highlighted
- *   - Footer: Two signature columns + institutional footer
+ * Structure:
+ *   1. Logo (top-left, proportional)
+ *   2. Institution name (centered)
+ *   3. Title centered (RECIBO DE PAGO)
+ *   4. Date right-aligned, Receipt number right-aligned
+ *   5. Body paragraph with member, concept, amounts
+ *   6. Signatures at bottom
  */
 export async function generatePaymentReceipt(data: ReceiptData): Promise<jsPDF> {
   const doc = new jsPDF({ format: 'a4', orientation: 'portrait' });
   const pageWidth = 210;
-  const pageHeight = 297;
-  const ml = 25; // margin left
-  const mr = 25; // margin right
-  const cw = pageWidth - ml - mr; // content width
+  const ml = 25;
+  const mr = 25;
+  const cw = pageWidth - ml - mr;
+  const fontSize = 10;
 
-  // ─── HEADER ───────────────────────────────────────────
-  let y = 25;
+  // ─── LOGO ─────────────────────────────────────────────
+  let y = 20;
 
-  // Logo (left)
   const logoSrc = data.logoUrl || defaultLogoImg;
   let logoImg = await loadImage(logoSrc);
   if (!logoImg && data.logoUrl) {
     logoImg = await loadImage(defaultLogoImg);
   }
   if (logoImg) {
-    const maxW = 30;
-    const maxH = 30;
+    const maxW = 22;
+    const maxH = 22;
     const r = Math.min(maxW / logoImg.width, maxH / logoImg.height);
-    doc.addImage(logoImg, 'PNG', ml, y - 5, logoImg.width * r, logoImg.height * r);
+    doc.addImage(logoImg, 'PNG', ml, y, logoImg.width * r, logoImg.height * r);
   }
 
-  // Title (right-aligned, large)
-  doc.setFontSize(26);
-  doc.setFont('helvetica', 'bold');
-  doc.text('RECIBO DE PAGO', pageWidth - mr, y + 5, { align: 'right' });
-
-  // Institution name below title
-  y += 15;
-  doc.setFontSize(11);
-  doc.setFont('helvetica', 'normal');
-  doc.text(data.institutionName, pageWidth - mr, y, { align: 'right' });
-
-  // Receipt number & date below institution
+  // ─── INSTITUTION NAME (centered) ──────────────────────
   y += 8;
-  doc.setFontSize(10);
-  doc.text(`Recibo N°: ${data.receiptNumber}`, pageWidth - mr, y, { align: 'right' });
-  y += 5;
-  doc.text(`Fecha: ${formatDate(data.paymentDate)}`, pageWidth - mr, y, { align: 'right' });
+  doc.setFontSize(fontSize);
+  doc.setFont('helvetica', 'normal');
+  doc.text(data.institutionName, pageWidth / 2, y, { align: 'center' });
 
-  // Separator line
+  // ─── TITLE (centered, bold, slightly larger) ──────────
   y += 10;
-  doc.setDrawColor(40, 40, 40);
-  doc.setLineWidth(0.6);
-  doc.line(ml, y, pageWidth - mr, y);
-
-  // ─── MEMBER INFO BLOCK ────────────────────────────────
-  y += 15;
-  const labelCol = ml;
-  const valueCol = ml + 45;
-
-  doc.setFontSize(11);
-
-  // Recibido de
+  doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
-  doc.text('Recibido de:', labelCol, y);
-  doc.setFont('helvetica', 'normal');
-  doc.text(data.memberName, valueCol, y);
-  y += 8;
+  doc.text('RECIBO DE PAGO', pageWidth / 2, y, { align: 'center' });
 
-  // Grado (if available)
-  if (data.memberDegree) {
-    doc.setFont('helvetica', 'bold');
-    doc.text('Grado:', labelCol, y);
-    doc.setFont('helvetica', 'normal');
-    const degreeLabels: Record<string, string> = {
-      aprendiz: 'Aprendiz',
-      companero: 'Compañero',
-      maestro: 'Maestro',
-    };
-    doc.text(degreeLabels[data.memberDegree] || data.memberDegree, valueCol, y);
-    y += 8;
+  // ─── DATE & RECEIPT NUMBER (right-aligned) ────────────
+  y += 12;
+  doc.setFontSize(fontSize);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Fecha: ${formatDate(data.paymentDate)}`, pageWidth - mr, y, { align: 'right' });
+  y += 5;
+  doc.text(`Número: ${data.receiptNumber}`, pageWidth - mr, y, { align: 'right' });
+
+  y += 10;
+
+  // ─── BODY PARAGRAPH ───────────────────────────────────
+  doc.setFontSize(fontSize);
+  doc.setFont('helvetica', 'normal');
+
+  const degreeLabels: Record<string, string> = {
+    aprendiz: 'Aprendiz',
+    companero: 'Compañero',
+    maestro: 'Maestro',
+  };
+  const degreeText = data.memberDegree ? `, grado ${degreeLabels[data.memberDegree] || data.memberDegree}` : '';
+
+  const amountWords = numberToWords(data.amountPaid);
+
+  let bodyText = `Recibí de ${data.memberName}${degreeText}, la suma de $${data.amountPaid.toFixed(2)} (${amountWords} dólares) por el concepto de ${data.concept}.`;
+
+  if (data.totalAmount > 0 && data.totalAmount !== data.amountPaid) {
+    bodyText += ` El valor total de la cuota es de $${data.totalAmount.toFixed(2)}.`;
   }
 
-  // Concepto
-  doc.setFont('helvetica', 'bold');
-  doc.text('Concepto:', labelCol, y);
-  doc.setFont('helvetica', 'normal');
-  const conceptLines = doc.splitTextToSize(data.concept, cw - 50);
-  doc.text(conceptLines, valueCol, y);
-  y += conceptLines.length * 6 + 4;
+  if (data.remainingBalance !== undefined && data.remainingBalance > 0) {
+    bodyText += ` Saldo pendiente: $${data.remainingBalance.toFixed(2)}.`;
+  }
 
-  // Additional details
+  const bodyLines = doc.splitTextToSize(bodyText, cw);
+  doc.text(bodyLines, ml, y);
+  y += bodyLines.length * 5 + 4;
+
+  // ─── ADDITIONAL DETAILS ───────────────────────────────
   if (data.details && data.details.length > 0) {
-    y += 4;
-    doc.setFontSize(10);
+    y += 2;
     for (const detail of data.details) {
-      doc.text(`• ${detail}`, labelCol + 5, y);
-      y += 6;
+      doc.text(`• ${detail}`, ml + 5, y);
+      y += 5;
     }
   }
 
-  // ─── AMOUNT SECTION ───────────────────────────────────
-  y += 12;
-
-  // Background box for amount
-  const boxY = y;
-  const hasRemaining = data.remainingBalance !== undefined && data.remainingBalance > 0;
-  const boxH = hasRemaining ? 55 : 45;
-
-  doc.setFillColor(245, 245, 245);
-  doc.setDrawColor(200, 200, 200);
-  doc.setLineWidth(0.3);
-  doc.roundedRect(ml, boxY, cw, boxH, 3, 3, 'FD');
-
-  y = boxY + 12;
-
-  // Valor total
-  doc.setFontSize(11);
-  doc.setFont('helvetica', 'normal');
-  doc.text('Valor de la cuota:', ml + 10, y);
-  doc.setFont('helvetica', 'bold');
-  doc.text(`$${data.totalAmount.toFixed(2)}`, ml + cw - 10, y, { align: 'right' });
-  y += 10;
-
-  // MONTO PAGADO (highlighted)
-  doc.setFontSize(16);
-  doc.setFont('helvetica', 'bold');
-  doc.text('MONTO PAGADO:', ml + 10, y);
-  doc.text(`$${data.amountPaid.toFixed(2)}`, ml + cw - 10, y, { align: 'right' });
-  y += 8;
-
-  // Amount in words
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'italic');
-  doc.setTextColor(100, 100, 100);
-  const amountWords = `(${numberToWords(data.amountPaid)} dólares)`;
-  doc.text(amountWords, ml + 10, y);
-  doc.setTextColor(0, 0, 0);
-
-  // Remaining balance
-  if (hasRemaining) {
-    y += 10;
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(180, 0, 0);
-    doc.text('Saldo pendiente:', ml + 10, y);
-    doc.text(`$${data.remainingBalance!.toFixed(2)}`, ml + cw - 10, y, { align: 'right' });
-    doc.setTextColor(0, 0, 0);
-  }
-
   // ─── CONFORMITY TEXT ──────────────────────────────────
-  y = boxY + boxH + 25;
-  doc.setFontSize(10);
+  y += 12;
+  doc.setFontSize(fontSize);
   doc.setFont('helvetica', 'normal');
-  const conformityText = 'Para constancia de lo recibido, se firma el presente comprobante en señal de conformidad.';
-  doc.text(conformityText, pageWidth / 2, y, { align: 'center' });
+  doc.text('Recibí de conformidad.', ml, y);
 
   // ─── SIGNATURES ───────────────────────────────────────
-  const sigY = y + 45;
+  const sigY = y + 40;
   const sigLineW = 60;
   const leftX = ml + cw * 0.25;
   const rightX = ml + cw * 0.75;
 
-  // Treasurer signature image (right)
+  // Treasurer signature image (left)
   if (data.treasurer?.signatureUrl) {
     const sigImg = await loadImage(data.treasurer.signatureUrl);
     if (sigImg) {
       const r = Math.min(55 / sigImg.width, 28 / sigImg.height);
-      doc.addImage(sigImg, 'PNG', rightX - (sigImg.width * r) / 2, sigY - 30, sigImg.width * r, sigImg.height * r);
+      doc.addImage(sigImg, 'PNG', leftX - (sigImg.width * r) / 2, sigY - 28, sigImg.width * r, sigImg.height * r);
     }
   }
 
-  // VM signature image (left)
+  // VM signature image (right)
   if (data.venerableMaestro?.signatureUrl) {
     const sigImg = await loadImage(data.venerableMaestro.signatureUrl);
     if (sigImg) {
       const r = Math.min(55 / sigImg.width, 28 / sigImg.height);
-      doc.addImage(sigImg, 'PNG', leftX - (sigImg.width * r) / 2, sigY - 30, sigImg.width * r, sigImg.height * r);
+      doc.addImage(sigImg, 'PNG', rightX - (sigImg.width * r) / 2, sigY - 28, sigImg.width * r, sigImg.height * r);
     }
   }
 
   // Signature lines
-  doc.setLineWidth(0.4);
+  doc.setLineWidth(0.3);
   doc.setDrawColor(60, 60, 60);
 
   // Left: Tesorero
   doc.line(leftX - sigLineW / 2, sigY, leftX + sigLineW / 2, sigY);
-  doc.setFontSize(9);
+  doc.setFontSize(fontSize);
   doc.setFont('helvetica', 'normal');
   doc.text(data.treasurer?.name || 'Tesorero', leftX, sigY + 5, { align: 'center' });
   doc.setFont('helvetica', 'bold');
@@ -293,11 +232,10 @@ export async function generatePaymentReceipt(data: ReceiptData): Promise<jsPDF> 
   doc.text(data.venerableMaestro?.cargo || 'Venerable Maestro', rightX, sigY + 10, { align: 'center' });
 
   // ─── FOOTER ───────────────────────────────────────────
+  const pageHeight = 297;
   doc.setFontSize(7);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(130, 130, 130);
-  doc.setLineWidth(0.2);
-  doc.line(ml, pageHeight - 20, pageWidth - mr, pageHeight - 20);
   doc.text(
     'Este comprobante de pago es un documento válido emitido por la tesorería de la institución.',
     pageWidth / 2,
