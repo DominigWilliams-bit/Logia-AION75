@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo, forwardRef } from 'react';
 import { supabase } from '@/integrations/supabase/client-unsafe';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Pencil, Trash2, MessageCircle, Search } from 'lucide-react';
+import { Plus, Pencil, Trash2, MessageCircle, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
@@ -60,6 +60,8 @@ const CARGO_LABELS: Record<string, string> = {
   tesorero: 'Tesorero',
 };
 
+const PAGE_SIZE = 25;
+
 const Members = forwardRef<HTMLDivElement>(function Members(_props, ref) {
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
@@ -67,6 +69,7 @@ const Members = forwardRef<HTMLDivElement>(function Members(_props, ref) {
   const [selectedMember, setSelectedMember] = useState<Member | undefined>();
   const [memberToDelete, setMemberToDelete] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
   const { toast } = useToast();
 
   const filteredMembers = useMemo(() => {
@@ -77,6 +80,14 @@ const Members = forwardRef<HTMLDivElement>(function Members(_props, ref) {
       (m.degree && (GRADE_LABELS[m.degree] || m.degree).toLowerCase().includes(term))
     );
   }, [members, searchTerm]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredMembers.length / PAGE_SIZE));
+  const paginatedMembers = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return filteredMembers.slice(start, start + PAGE_SIZE);
+  }, [filteredMembers, currentPage]);
+
+  useEffect(() => { setCurrentPage(1); }, [searchTerm]);
 
   useEffect(() => {
     loadMembers();
@@ -165,7 +176,7 @@ const Members = forwardRef<HTMLDivElement>(function Members(_props, ref) {
                 </TableCell>
               </TableRow>
             ) : (
-              filteredMembers.map((member) => {
+              paginatedMembers.map((member) => {
                 const memberIsBirthday = isBirthdayToday(member.birth_date);
                 const hasPhone = !!member.phone;
                 
@@ -227,6 +238,24 @@ const Members = forwardRef<HTMLDivElement>(function Members(_props, ref) {
           </TableBody>
         </Table>
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            Mostrando {((currentPage - 1) * PAGE_SIZE) + 1}–{Math.min(currentPage * PAGE_SIZE, filteredMembers.length)} de {filteredMembers.length}
+          </p>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" disabled={currentPage <= 1} onClick={() => setCurrentPage(p => p - 1)}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="text-sm">Página {currentPage} de {totalPages}</span>
+            <Button variant="outline" size="sm" disabled={currentPage >= totalPages} onClick={() => setCurrentPage(p => p + 1)}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
 
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
