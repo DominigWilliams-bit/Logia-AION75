@@ -658,10 +658,10 @@ const Treasury = forwardRef<HTMLDivElement>(function Treasury(_props, ref) {
             <div className="inline-flex min-w-full">
               {/* Fixed column - Miembro */}
               <div className="sticky left-0 z-30 flex-shrink-0 bg-card border-r shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
-                <Table>
+                <Table className="table-fixed">
                   <TableHeader>
                     <TableRow className="bg-muted/50 hover:bg-muted/50">
-                      <TableHead className="min-w-[200px] max-w-[280px] font-semibold text-sm">Miembro</TableHead>
+                      <TableHead className="w-[220px] font-semibold text-sm h-[44px]">Miembro</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -676,8 +676,8 @@ const Treasury = forwardRef<HTMLDivElement>(function Treasury(_props, ref) {
                       filter(([key, p]) => key.startsWith(member.id) && p.payment_type !== 'pronto_pago_benefit').
                       reduce((sum, [, p]) => sum + Number(p.amount), 0);
                       return (
-                        <TableRow key={member.id} className="hover:bg-muted/30 h-[56px]">
-                          <TableCell className="min-w-[200px] max-w-[280px] py-2">
+                        <TableRow key={member.id} className="hover:bg-muted/30 h-[52px]">
+                          <TableCell className="w-[220px] py-2">
                             <div className="flex flex-col">
                               <span className="font-medium text-sm">{member.full_name}</span>
                               <span className="text-xs text-muted-foreground/70">
@@ -694,18 +694,18 @@ const Treasury = forwardRef<HTMLDivElement>(function Treasury(_props, ref) {
 
               {/* Scrollable columns */}
               <div className="flex-1">
-                <Table>
+                <Table className="table-fixed">
                   <TableHeader>
                     <TableRow className="bg-muted/50 hover:bg-muted/50">
                       {MONTHS.map((month, idx) =>
-                      <TableHead key={idx} className="text-center font-semibold min-w-[85px] whitespace-nowrap text-sm py-3">
+                      <TableHead key={idx} className="text-center font-semibold w-[85px] whitespace-nowrap text-sm h-[44px]">
                           {month}
                         </TableHead>
                       )}
-                      <TableHead className="text-center font-semibold w-[120px] whitespace-nowrap bg-muted/50 text-sm py-3">
+                      <TableHead className="text-center font-semibold w-[110px] whitespace-nowrap bg-muted/50 text-sm h-[44px]">
                         Total Adeudado
                       </TableHead>
-                      <TableHead className="text-center font-semibold w-[180px] whitespace-nowrap text-sm py-3">
+                      <TableHead className="text-center font-semibold w-[160px] whitespace-nowrap text-sm h-[44px]">
                         Acciones
                       </TableHead>
                     </TableRow>
@@ -718,7 +718,7 @@ const Treasury = forwardRef<HTMLDivElement>(function Treasury(_props, ref) {
                     filteredMembers.map((member) => {
                       const memberFee = settings.monthly_fee_base;
                       return (
-                        <TableRow key={member.id} className="hover:bg-muted/30 h-[56px]">
+                        <TableRow key={member.id} className="hover:bg-muted/30 h-[52px]">
                           {MONTHS.map((_, monthIndex) => {
                             const key = getPaymentKey(member.id, monthIndex);
                             const payment = payments[key];
@@ -728,7 +728,7 @@ const Treasury = forwardRef<HTMLDivElement>(function Treasury(_props, ref) {
                             const pendingAmount = isPartial ? memberFee - payment.amount : 0;
                             return (
                               <TableCell key={monthIndex} className={cn(
-                                'text-center relative group cursor-pointer transition-colors min-w-[85px] py-3',
+                                'text-center relative group cursor-pointer transition-colors w-[85px] py-2',
                                 'hover:bg-muted',
                                 isPPBenefit && 'bg-primary/10',
                                 isPartial && 'bg-destructive/15'
@@ -756,12 +756,12 @@ const Treasury = forwardRef<HTMLDivElement>(function Treasury(_props, ref) {
                               </TableCell>);
 
                           })}
-                          <TableCell className="text-center bg-background py-3">
+                          <TableCell className="text-center bg-background w-[110px] py-2">
                             <span className={cn('font-bold text-base', totalAdeudado[member.id] > 0 ? 'text-destructive' : 'text-success')}>
                               ${totalAdeudado[member.id]?.toFixed(0) || 0}
                             </span>
                           </TableCell>
-                          <TableCell className="text-center py-3">
+                          <TableCell className="text-center w-[160px] py-2">
                             <div className="flex gap-1 justify-center">
                               <Button variant="outline" size="sm" className="h-8 gap-1 text-xs" onClick={() => openAdvancePayment(member)}>
                                  Adelantado

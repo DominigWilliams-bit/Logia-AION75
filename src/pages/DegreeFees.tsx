@@ -56,7 +56,6 @@ const DegreeFees = forwardRef<HTMLDivElement>(function DegreeFees(_props, ref) {
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterMemberId, setFilterMemberId] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [formData, setFormData] = useState({
     member_id: '',
@@ -90,11 +89,8 @@ const DegreeFees = forwardRef<HTMLDivElement>(function DegreeFees(_props, ref) {
         (f.member_id && memberMap[f.member_id]?.toLowerCase().includes(term))
       );
     }
-    if (filterMemberId && filterMemberId !== 'all') {
-      result = result.filter(f => f.member_id === filterMemberId);
-    }
     return result;
-  }, [fees, searchTerm, filterMemberId, memberMap]);
+  }, [fees, searchTerm, memberMap]);
 
   const totalPages = Math.max(1, Math.ceil(filteredFees.length / PAGE_SIZE));
   const paginatedFees = useMemo(() => {
@@ -103,7 +99,7 @@ const DegreeFees = forwardRef<HTMLDivElement>(function DegreeFees(_props, ref) {
   }, [filteredFees, currentPage]);
 
   // Reset page when filters change
-  useEffect(() => { setCurrentPage(1); }, [searchTerm, filterMemberId]);
+  useEffect(() => { setCurrentPage(1); }, [searchTerm]);
 
   useEffect(() => {
     loadData();
@@ -275,18 +271,11 @@ const DegreeFees = forwardRef<HTMLDivElement>(function DegreeFees(_props, ref) {
             Registro de pagos por iniciación, aumento de salario, exaltación y afiliación
           </p>
         </div>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+        <div className="flex items-center gap-3">
           <div className="relative w-full sm:w-56">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input placeholder="Buscar..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9" />
           </div>
-          <Select value={filterMemberId} onValueChange={setFilterMemberId}>
-            <SelectTrigger className="w-full sm:w-48"><SelectValue placeholder="Filtrar por miembro" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos los miembros</SelectItem>
-              {activeMembers.map(m => <SelectItem key={m.id} value={m.id}>{m.full_name}</SelectItem>)}
-            </SelectContent>
-          </Select>
           <Button onClick={openNewDialog}>
             <Plus className="mr-2 h-4 w-4" />
             Nuevo Registro
@@ -315,7 +304,7 @@ const DegreeFees = forwardRef<HTMLDivElement>(function DegreeFees(_props, ref) {
             ) : paginatedFees.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                  {searchTerm || filterMemberId !== 'all' ? 'No se encontraron resultados' : 'No hay derechos de grado registrados'}
+                  {searchTerm ? 'No se encontraron resultados' : 'No hay derechos de grado registrados'}
                 </TableCell>
               </TableRow>
             ) : (
