@@ -365,10 +365,12 @@ const DegreeFees = forwardRef<HTMLDivElement>(function DegreeFees(_props, ref) {
           </DialogHeader>
 
           <div className="space-y-4">
-            <div>
-              <Label htmlFor="member">Miembro</Label>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Miembro</Label>
               <Select value={formData.member_id || 'none'} onValueChange={(value) => setFormData({ ...formData, member_id: value === 'none' ? '' : value })}>
-                <SelectTrigger className="w-full"><SelectValue placeholder="Seleccione un miembro (opcional)" /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar miembro" />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">— Sin seleccionar —</SelectItem>
                   {activeMembers.map(m => <SelectItem key={m.id} value={m.id}>{m.full_name}</SelectItem>)}

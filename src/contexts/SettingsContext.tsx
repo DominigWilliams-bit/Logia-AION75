@@ -13,8 +13,10 @@ export interface AppSettings {
   vm_signature_url: string | null;
 }
 
+const SETTINGS_ID = '099558c5-4589-49fd-bf8e-c7d7c3b19f18';
+
 const DEFAULT_SETTINGS: AppSettings = {
-  id: 'default',
+  id: SETTINGS_ID,
   institution_name: 'Logia',
   monthly_fee_base: 50,
   monthly_report_template: 'Este informe presenta el resumen financiero correspondiente al período indicado, con datos reales registrados en el sistema de tesorería.',
@@ -75,7 +77,7 @@ async function fetchSettings(): Promise<AppSettings> {
       // Using limit(1) without a deterministic filter/order can return a
       // different row over time if multiple records exist, which makes values
       // (e.g., treasurer_id) appear to "reset" in the UI.
-      .eq('id', 'default')
+      .limit(1)
       .maybeSingle();
 
     if (error) {
@@ -87,7 +89,6 @@ async function fetchSettings(): Promise<AppSettings> {
       const { data: inserted, error: insertError } = await supabase
         .from('settings')
         .insert([{
-          id: 'default',
           institution_name: DEFAULT_SETTINGS.institution_name,
           monthly_fee_base: DEFAULT_SETTINGS.monthly_fee_base,
           monthly_report_template: DEFAULT_SETTINGS.monthly_report_template,
@@ -155,7 +156,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const updateSettings = useCallback(async (updates: Partial<AppSettings>) => {
     // Use a stable, canonical settings record.
     // This prevents accidental switching between different rows in the table.
-    const currentId = 'default';
+    const currentId = (globalSettings || settings).id;
 
     // Always merge with the latest known settings to avoid overwriting fields.
     const latestSettings = globalSettings || settings;

@@ -632,93 +632,57 @@ const Treasury = forwardRef<HTMLDivElement>(function Treasury(_props, ref) {
         </div>
       </div>
 
-      <div className="rounded-lg border bg-card shadow-sm">
-        <div className="relative">
-          <div
-            className="overflow-x-auto"
-            tabIndex={0}
-            onKeyDown={(e) => {
-              const container = e.currentTarget;
-              if (e.key === 'ArrowRight') {
-                e.preventDefault();
-                container.scrollBy({ left: 120, behavior: 'smooth' });
-              } else if (e.key === 'ArrowLeft') {
-                e.preventDefault();
-                container.scrollBy({ left: -120, behavior: 'smooth' });
-              }
-            }}
-            onWheel={(e) => {
-              if (e.shiftKey) {
-                e.preventDefault();
-                e.currentTarget.scrollBy({ left: e.deltaY, behavior: 'auto' });
-              }
-            }}
-            style={{ outline: 'none' }}>
+      <div className="rounded-lg border bg-card shadow-sm overflow-x-auto"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          const container = e.currentTarget;
+          if (e.key === 'ArrowRight') { e.preventDefault(); container.scrollBy({ left: 120, behavior: 'smooth' }); }
+          else if (e.key === 'ArrowLeft') { e.preventDefault(); container.scrollBy({ left: -120, behavior: 'smooth' }); }
+        }}
+        onWheel={(e) => {
+          if (e.shiftKey) { e.preventDefault(); e.currentTarget.scrollBy({ left: e.deltaY, behavior: 'auto' }); }
+        }}
+        style={{ outline: 'none' }}>
 
-            <div className="inline-flex min-w-full">
-              {/* Fixed column - Miembro */}
-              <div className="sticky left-0 z-30 flex-shrink-0 bg-card border-r shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
-                <Table className="table-fixed">
-                  <TableHeader>
-                    <TableRow className="bg-muted/50 hover:bg-muted/50">
-                      <TableHead className="w-[220px] font-semibold text-sm h-[44px]">Miembro</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredMembers.length === 0 ?
-                    <TableRow>
-                        <TableCell className="text-center py-8 text-muted-foreground">
-                          {searchTerm ? 'No se encontraron resultados' : 'No hay miembros activos'}
-                        </TableCell>
-                      </TableRow> :
-                    filteredMembers.map((member) => {
-                      const accumulatedTotal = Object.entries(payments).
-                      filter(([key, p]) => key.startsWith(member.id) && p.payment_type !== 'pronto_pago_benefit').
-                      reduce((sum, [, p]) => sum + Number(p.amount), 0);
-                      return (
-                        <TableRow key={member.id} className="hover:bg-muted/30 h-[52px]">
-                          <TableCell className="w-[220px] py-2">
-                            <div className="flex flex-col">
-                              <span className="font-medium text-sm">{member.full_name}</span>
-                              <span className="text-xs text-muted-foreground/70">
-                                {GRADE_LABELS[member.degree || ''] || '-'} · <span className="text-primary font-medium">Acumulado: ${accumulatedTotal.toFixed(2)}</span>
-                              </span>
-                            </div>
-                          </TableCell>
-                        </TableRow>);
-
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
-
-              {/* Scrollable columns */}
-              <div className="flex-1">
-                <Table className="table-fixed">
-                  <TableHeader>
-                    <TableRow className="bg-muted/50 hover:bg-muted/50">
-                      {MONTHS.map((month, idx) =>
-                      <TableHead key={idx} className="text-center font-semibold w-[85px] whitespace-nowrap text-sm h-[44px]">
-                          {month}
-                        </TableHead>
-                      )}
-                      <TableHead className="text-center font-semibold w-[110px] whitespace-nowrap bg-muted/50 text-sm h-[44px]">
-                        Total Adeudado
-                      </TableHead>
-                      <TableHead className="text-center font-semibold w-[160px] whitespace-nowrap text-sm h-[44px]">
-                        Acciones
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredMembers.length === 0 ?
-                    <TableRow>
-                        <TableCell colSpan={14} className="text-center py-8 text-muted-foreground">&nbsp;</TableCell>
-                      </TableRow> :
-                    filteredMembers.map((member) => {
-                      const memberFee = settings.monthly_fee_base;
-                      return (
-                        <TableRow key={member.id} className="hover:bg-muted/30 h-[52px]">
+        <Table className="table-fixed" style={{ minWidth: `${220 + 85 * 12 + 110 + 160}px` }}>
+          <TableHeader>
+            <TableRow className="bg-muted/50 hover:bg-muted/50">
+              <TableHead className="w-[220px] font-semibold text-sm h-[44px] sticky left-0 z-10 bg-muted/50">Miembro</TableHead>
+              {MONTHS.map((month, idx) =>
+                <TableHead key={idx} className="text-center font-semibold w-[85px] whitespace-nowrap text-sm h-[44px]">
+                  {month}
+                </TableHead>
+              )}
+              <TableHead className="text-center font-semibold w-[110px] whitespace-nowrap text-sm h-[44px]">
+                Total Adeudado
+              </TableHead>
+              <TableHead className="text-center font-semibold w-[160px] whitespace-nowrap text-sm h-[44px]">
+                Acciones
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filteredMembers.length === 0 ?
+              <TableRow>
+                <TableCell colSpan={15} className="text-center py-8 text-muted-foreground">
+                  {searchTerm ? 'No se encontraron resultados' : 'No hay miembros activos'}
+                </TableCell>
+              </TableRow> :
+            filteredMembers.map((member) => {
+              const memberFee = settings.monthly_fee_base;
+              const accumulatedTotal = Object.entries(payments)
+                .filter(([key, p]) => key.startsWith(member.id) && p.payment_type !== 'pronto_pago_benefit')
+                .reduce((sum, [, p]) => sum + Number(p.amount), 0);
+              return (
+                <TableRow key={member.id} className="hover:bg-muted/30">
+                  <TableCell className="w-[220px] py-2 sticky left-0 z-10 bg-card">
+                    <div className="flex flex-col">
+                      <span className="font-medium text-sm">{member.full_name}</span>
+                      <span className="text-xs text-muted-foreground/70">
+                        {GRADE_LABELS[member.degree || ''] || '-'} · <span className="text-primary font-medium">Acumulado: ${accumulatedTotal.toFixed(2)}</span>
+                      </span>
+                    </div>
+                  </TableCell>
                           {MONTHS.map((_, monthIndex) => {
                             const key = getPaymentKey(member.id, monthIndex);
                             const payment = payments[key];
@@ -776,10 +740,6 @@ const Treasury = forwardRef<HTMLDivElement>(function Treasury(_props, ref) {
                     })}
                   </TableBody>
                 </Table>
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* Single Payment Dialog */}
