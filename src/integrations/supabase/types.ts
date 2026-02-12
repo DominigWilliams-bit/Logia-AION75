@@ -320,7 +320,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      get_next_receipt_number: { Args: { p_module: string }; Returns: string }
+      [_ in never]: never
     }
     Enums: {
       [_ in never]: never

@@ -56,6 +56,7 @@ const DegreeFees = forwardRef<HTMLDivElement>(function DegreeFees(_props, ref) {
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [filterMemberId, setFilterMemberId] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [formData, setFormData] = useState({
     member_id: '',
@@ -89,8 +90,11 @@ const DegreeFees = forwardRef<HTMLDivElement>(function DegreeFees(_props, ref) {
         (f.member_id && memberMap[f.member_id]?.toLowerCase().includes(term))
       );
     }
+    if (filterMemberId && filterMemberId !== 'all') {
+      result = result.filter(f => f.member_id === filterMemberId);
+    }
     return result;
-  }, [fees, searchTerm, memberMap]);
+  }, [fees, searchTerm, filterMemberId, memberMap]);
 
   const totalPages = Math.max(1, Math.ceil(filteredFees.length / PAGE_SIZE));
   const paginatedFees = useMemo(() => {
@@ -99,7 +103,7 @@ const DegreeFees = forwardRef<HTMLDivElement>(function DegreeFees(_props, ref) {
   }, [filteredFees, currentPage]);
 
   // Reset page when filters change
-  useEffect(() => { setCurrentPage(1); }, [searchTerm]);
+  useEffect(() => { setCurrentPage(1); }, [searchTerm, filterMemberId]);
 
   useEffect(() => {
     loadData();
@@ -271,11 +275,18 @@ const DegreeFees = forwardRef<HTMLDivElement>(function DegreeFees(_props, ref) {
             Registro de pagos por iniciación, aumento de salario, exaltación y afiliación
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
           <div className="relative w-full sm:w-56">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input placeholder="Buscar..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9" />
           </div>
+          <Select value={filterMemberId} onValueChange={setFilterMemberId}>
+            <SelectTrigger className="w-full sm:w-48"><SelectValue placeholder="Filtrar por miembro" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos los miembros</SelectItem>
+              {activeMembers.map(m => <SelectItem key={m.id} value={m.id}>{m.full_name}</SelectItem>)}
+            </SelectContent>
+          </Select>
           <Button onClick={openNewDialog}>
             <Plus className="mr-2 h-4 w-4" />
             Nuevo Registro
@@ -304,7 +315,7 @@ const DegreeFees = forwardRef<HTMLDivElement>(function DegreeFees(_props, ref) {
             ) : paginatedFees.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                  {searchTerm ? 'No se encontraron resultados' : 'No hay derechos de grado registrados'}
+                  {searchTerm || filterMemberId !== 'all' ? 'No se encontraron resultados' : 'No hay derechos de grado registrados'}
                 </TableCell>
               </TableRow>
             ) : (
@@ -365,12 +376,10 @@ const DegreeFees = forwardRef<HTMLDivElement>(function DegreeFees(_props, ref) {
           </DialogHeader>
 
           <div className="space-y-4">
-            <div className="space-y-1.5">
-              <Label className="text-xs">Miembro</Label>
+            <div>
+              <Label htmlFor="member">Miembro</Label>
               <Select value={formData.member_id || 'none'} onValueChange={(value) => setFormData({ ...formData, member_id: value === 'none' ? '' : value })}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar miembro" />
-                </SelectTrigger>
+                <SelectTrigger className="w-full"><SelectValue placeholder="Seleccione un miembro (opcional)" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">— Sin seleccionar —</SelectItem>
                   {activeMembers.map(m => <SelectItem key={m.id} value={m.id}>{m.full_name}</SelectItem>)}
